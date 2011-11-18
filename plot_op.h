@@ -15,7 +15,7 @@ class scale
 		//"constructor" of scale
 		void init();
 		//scale the plot
-		bool scale_plot();
+		void scale_plot();
 		public:	
 		//constructor
 		scale(plot * _parent);
@@ -48,7 +48,7 @@ class transform
 		//how many times to do the transform operation
 		int times;
 		//"turn" a plot's display graph to the destination graph
-		bool turn(float scl);
+		void turn(float scl);
 		//change the destination of the transformer operation
 		void change_dst(const coord * new_dst);		//load the slope between destination and original graphs
 		void load_slope();

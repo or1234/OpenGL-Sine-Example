@@ -13,7 +13,7 @@ scale::scale(plot * _parent) : parent(_parent), targetscale(0)
 }
 
 //scale the plot
-bool scale::scale_plot()
+void scale::scale_plot()
 {
 	//retrieve the current scale
 	int currentscale = parent->get_scale();
@@ -36,21 +36,20 @@ bool scale::scale_plot()
 	//change the scale
 	parent->set_scale(currentscale);
 
-	//if the current scale is the target scale
-	if(currentscale == targetscale)
-	{
-		//we are done 
-		return false;
-	}
-	//scale isn't the same - continue
-	return true;
-
 }
 //scheduled scale operation function
 bool scaleplot(plot * target)
 {
-	//just forward the call to scale_plot of the target's scale operation
-	return target->scaler.scale_plot();
+	//forward the call to scale_plot of the target's scale operation
+	target->scaler.scale_plot();
+	//are the scales the same?
+	if(target->get_scale() == target->scaler.targetscale)
+	{
+		//yes - we are done scaling
+		return false;
+	}
+	//no - keep scaling
+	return true;
 }
 
 //scheduled scale initalizer - picks scales to imitate a sine wave
@@ -108,17 +107,8 @@ void transform::change_dst(const coord * new_dst)
 	load_slope();
 }
 
-bool transform::turn(float scl)
+void transform::turn(float scl)
 {
-	//if we had gone through the specified number of times
-	if(count == times)
-	{
-		//we have fully changed the display graph - change the originalgraph,  and exit
-		parent->set_original(dst);
-		return false;
-	}
-	//we have gone through an additional time - increment the counter
-	++count;
 	//retrieve the display graph
 	coord * display = parent->get_display_plot();
 	//get the size
@@ -129,15 +119,23 @@ bool transform::turn(float scl)
 		//translate it by the slope times the given scale
 		display[i].translate(slope_l[i].run * scl, slope_l[i].rise * scl);
 	}
-	//we are continuing after this
-	return true;
 }
 
 //scheduled transformer operator
 bool transformplot(plot * target)
 {
-	//forward call to the transformer operation with a scale of 1 - that parameter is used in the compound scale-transform operation
-	return target->transformer.turn(1);	
+	//if we had gone through the specified number of times
+	if(target->transformer.count == target->transformer.times)
+	{
+		//we have fully changed the display graph - change the original graph,  and exit
+		target->set_original(target->transformer.dst);
+		return false;
+	}
+	//no scale on the turn - just a normal turn
+	target->transformer.turn(1);
+	//increment the counter
+	++target->transformer.count;
+	return true;
 }
 //scheduled transformer initialzier
 void inittransform(plot * target)
@@ -176,8 +174,6 @@ void init_scale_transform(plot * target)
 	//scale_transform uses both the scaler and transformer on the object
 	initscale(target);
 	inittransform(target);
-	//disable the transformer's timing mechanism - we decide when to stop running based on scaler only
-	target->transformer.times = -1;
 	//the scale the transformer needs to apply is what the target scale is over the absolute value of the target scale - the current scale of the plot
 	target->scaler_transformer.scl = (float)target->scaler.targetscale / abs(target->scaler.targetscale - target->get_scale());
 }
@@ -188,15 +184,16 @@ bool scale_transform_plot(plot * target)
 	//"turn" the display graph using the scale we computed in the intialize function
 	target->transformer.turn(target->scaler_transformer.scl);
 	//see if we are done scaling
-	bool fin = target->scaler.scale_plot();
+	target->scaler.scale_plot();
 	//if we are done
-	if(!fin)
+	if(target->get_scale() == target->scaler.targetscale)
 	{
-		//we have to do the transformer cleanup here because we suspended its own counter
+		//we have to do the transformer cleanup here
 		target->set_original(target->transformer.dst);
+		return false;
 	}
-	//return whether or not we were finished from the scaler's decision
-	return fin;
+	//we aren't done - keep going
+	return true;
 }
 
 //how many plot operatorators and delays the scheduler can access
