@@ -8,7 +8,7 @@
 char buffer[200];
 
 //scale constructor just sets parent - initialzier actually loads it when the time comes
-scale::scale(plot * _parent) : parent(_parent), targetscale(0)
+scale::scale(plot * _parent) : parent(_parent), targetscale(0), inc(0)
 {
 }
 
@@ -20,16 +20,16 @@ void scale::scale_plot()
 	//if it is less than the target
 	if(currentscale < targetscale)
 	{
-		//increase the scale by 1
-		++currentscale;
+		//increase the scale
+		currentscale += inc;
 	}
 	else
 	{
 		//if the scale is greater than the target
 		if(currentscale > targetscale)
 		{
-			//decrease the scale by 1
-			--currentscale;
+			//decrease the scale
+			currentscale -= inc;
 		}
 	}
 	
@@ -68,10 +68,21 @@ void initscale(plot * target)
 		//go up to the maximum scale if we aren't at the bottom of the "wave"
 		scl.targetscale = MAX_SCALE;
 	}
+	int dist = abs(target->get_scale() - scl.targetscale);
+	for(int i = 0; i < 5; ++i)
+	{
+		int check = (rand() % 6) + 1;
+		if(dist % check == 0)
+		{
+			scl.inc = check;
+			return;
+		}
+	}
+	scl.inc = 1;
 }
 
 //transform constructor just fills in the parent and clears the members
-transform::transform(plot * _parent) : parent(_parent), org(0),  dst(0),count(0), times(0), slope_l(new slope[plot_size])
+transform::transform(plot * _parent) : parent(_parent), org(0),  dst(0), scl(0), count(0), times(0), slope_l(new slope[plot_size])
 {
 }
 
@@ -107,7 +118,7 @@ void transform::change_dst(const coord * new_dst)
 	load_slope();
 }
 
-void transform::turn(float scl)
+void transform::turn()
 {
 	//retrieve the display graph
 	coord * display = parent->get_display_plot();
@@ -132,7 +143,7 @@ bool transformplot(plot * target)
 		return false;
 	}
 	//no scale on the turn - just a normal turn
-	target->transformer.turn(1);
+	target->transformer.turn();
 	//increment the counter
 	++target->transformer.count;
 	return true;
@@ -144,8 +155,12 @@ void inittransform(plot * target)
 	//initalize the slope list if it does not exist
 	//the transformer hasn't been executed at all - count of 0
 	target->transformer.count = 0;
-	//it has to get to the other graph and there is no other manipulation, so it takes however much the scale is to get to the other graph
-	target->transformer.times = target->get_scale();
+	//figure out a random time factor - larger numbers being faster and smaller numbers being slower
+	target->transformer.scl = (rand() % 5) + 1 ;
+	//target->transformer.scl = 1;
+	//it has to get to the other graph and there is no other manipulation, so it takes however much the scale is to get to the other graph including the extra time
+	target->transformer.times = target->get_scale() / target->transformer.scl;
+	//target->transformer.times = target->get_scale();
 	//store the original plot on the transformer
 	target->transformer.org = target->get_original_plot();
 	const coord * new_dst = target->transformer.dst;
@@ -164,7 +179,7 @@ void inittransform(plot * target)
 }
 
 //scale transformer operation constructor just sets the parent and clears members
-scale_transform::scale_transform(plot * _parent) : parent(_parent), scl(0)
+scale_transform::scale_transform(plot * _parent) : parent(_parent)
 {
 }
 
@@ -174,20 +189,29 @@ void init_scale_transform(plot * target)
 	//scale_transform uses both the scaler and transformer on the object
 	initscale(target);
 	inittransform(target);
-	//the scale the transformer needs to apply is what the target scale is over the absolute value of the target scale - the current scale of the plot
-	target->scaler_transformer.scl = (float)target->scaler.targetscale / abs(target->scaler.targetscale - target->get_scale());
+	//the number of times the plot needs to go through this operation is the distance between the target and current scales over how much the scale increases on each pass
+	target->transformer.times = abs(target->scaler.targetscale - target->get_scale()) / target->scaler.inc;
+	//the actual scale of the transformer is whatever the target scale is over the number of times this operation runs
+	target->transformer.scl = (float)target->scaler.targetscale / target->transformer.times;
+	//although this seems simple looking back, it was a bitch to figure out
+
 }
 
 //scale transform operation function
 bool scale_transform_plot(plot * target)
 {
+//	dbgprint("scale transform!\n");
 	//"turn" the display graph using the scale we computed in the intialize function
-	target->transformer.turn(target->scaler_transformer.scl);
+	target->transformer.turn();
 	//see if we are done scaling
 	target->scaler.scale_plot();
 	//if we are done
-	if(target->get_scale() == target->scaler.targetscale)
+	++target->transformer.count;
+//	sprintf(sprintstr, "count %d\n", target->transformer.count);
+///	dbgprint(sprintstr);
+	if(target->transformer.count == target->transformer.times)
 	{
+		//dbgprint("finished scale transform!\n");
 		//we have to do the transformer cleanup here
 		target->set_original(target->transformer.dst);
 		return false;
@@ -198,7 +222,7 @@ bool scale_transform_plot(plot * target)
 
 //how many plot operatorators and delays the scheduler can access
 const int PLOT_OP_COUNT = 2;
-const int DELAY_COUNT = 3;
+const int DELAY_COUNT = 2;
 //array of delays and plot operators
 int * DELAY;
 plot_oper * plot_operators;
@@ -208,15 +232,13 @@ void initialize_plots()
 {
 	DELAY = new int[DELAY_COUNT];
 	DELAY[0] = 20;
-	DELAY[1] = 30;
-	DELAY[2] = 40;
+	DELAY[1] = 25;
+	//DELAY[2] = 40;
 	plot_operators = new plot_oper[PLOT_OP_COUNT];
-	//plot_operators[1].op = scaleplot;
-	//plot_operators[1].init = initscale;
-	plot_operators[0].op = scale_transform_plot;
-	plot_operators[0].init = init_scale_transform;
-	plot_operators[1].op = transformplot;
-	plot_operators[1].init = inittransform;
+	plot_operators[0].op = transformplot;
+	plot_operators[0].init = inittransform;
+	plot_operators[1].op = scale_transform_plot;
+	plot_operators[1].init = init_scale_transform;
 	plots = new plot*[PLOT_COUNT];
 	//for every plot that exists
 	for(int i = 0; i < PLOT_COUNT; ++i)

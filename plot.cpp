@@ -9,14 +9,14 @@
 #include <stdlib.h>
 char buf[200];
 const int plot_size = 196;
-const int plot_count = 100;
+const int plot_count = 48;
 //how many plots there are
 const int PLOT_COUNT = 1;
 //minimum size of a plot
 const int MIN_PLOT_SIZE = 96;
-const int MAX_SCALE = 700;
+const int MAX_SCALE = 400;
 const int MIN_SCALE = 100;
-const int START_SCALE = 400;
+const int START_SCALE = MIN_SCALE;
 //array of pointers to plots 
 plot **plots;
 //constructor takes the index of where the plot is in the array, the graphs, the plot size, and passes itself to the plot operation it contains so they can manipulate the plot later on

@@ -10,6 +10,8 @@ class scale
 	private:
 		//target scale we are trying to reach
 		int targetscale;
+		//scale speed
+		int inc;
 		//parent plot of scale operation
 		plot * parent;
 		//"constructor" of scale
@@ -48,7 +50,9 @@ class transform
 		//how many times to do the transform operation
 		int times;
 		//"turn" a plot's display graph to the destination graph
-		void turn(float scl);
+		void turn();
+		//scale the transform operation needs to apply to the turn
+		float scl;
 		//change the destination of the transformer operation
 		void change_dst(const coord * new_dst);		//load the slope between destination and original graphs
 		void load_slope();
@@ -69,8 +73,6 @@ class transform
 class scale_transform
 {
 	private:
-		//scale the transform operation needs to apply to its "turn" operation
-		float scl;
 		//parent plot of scale_transform operation
 		plot * parent;
 	public:
