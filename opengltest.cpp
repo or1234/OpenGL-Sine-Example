@@ -60,7 +60,7 @@ void init_plot()
 		{
 			//make sure to convert to radians or else the graph won't look correct
 			float actual = x * (PI / 48);
-			sinplots[i][x].setpolar(sin((actual * (i + 1))), actual);
+			sinplots[i][x].setpolar(sin(actual * (i + 1)), actual);
 		}
 	}
 	dbgprint("finished sin generation\n");
